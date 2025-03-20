@@ -122,10 +122,17 @@ class TeleScraper:
             main_folder = url_data[-1]
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             
-            if not os.path.exists(main_folder):
-                os.makedirs(main_folder)
+            # Create data folder if it doesn't exist
+            data_folder = "data"
+            if not os.path.exists(data_folder):
+                os.makedirs(data_folder)
+            
+            # Create subfolder for the channel inside data folder
+            channel_folder = os.path.join(data_folder, main_folder)
+            if not os.path.exists(channel_folder):
+                os.makedirs(channel_folder)
                 
-            file_path = os.path.join(main_folder, f"{main_folder}-bulk-{self.start_id}-{self.start_id+self.num_posts-1}-{timestamp}.json")
+            file_path = os.path.join(channel_folder, f"{main_folder}-bulk-{self.start_id}-{self.start_id+self.num_posts-1}-{timestamp}.json")
             
             with open(file_path, "w", encoding="utf-8") as file:
                 json.dump(posts_data, file, ensure_ascii=False, indent=2)
