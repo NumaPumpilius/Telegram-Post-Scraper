@@ -2,13 +2,25 @@ import asyncio
 import os
 import re
 import time
+import json
+import argparse
+from datetime import datetime
 from bs4 import BeautifulSoup
 import html2text
 import requests
 import pyperclip
+
 class TeleScraper:
-    def __init__(self):        
-        self.postURL = input('Please enter the Telegram post URL:\n > ')
+    def __init__(self, link=None, bulk_mode=False, start_id=None, num_posts=None):        
+        if link:
+            self.postURL = link
+        else:
+            self.postURL = input('Please enter the Telegram post URL:\n > ')
+        
+        self.bulk_mode = bulk_mode
+        self.start_id = start_id
+        self.num_posts = num_posts
+        
         self.urlSplit = self.postURL.split(',')
         self.urlList = [entry + '?embed=1&mode=tme' for entry in self.urlSplit]
         self.imageUrls = []
@@ -21,6 +33,7 @@ class TeleScraper:
         self.headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36 TelegramBot (like TwitterBot)'
         }
+        
     def clClr(self):
         match(os.name):
             case 'nt':
@@ -31,7 +44,7 @@ class TeleScraper:
     def html_to_text(self, html):
         h = html2text.HTML2Text()
         h.body_width = 0  # Disable line wrapping
-        h.ignore_links = True  # Ignore hyperlinks
+        h.ignore_links = False  # Ignore hyperlinks
         h.ignore_emphasis = True  # Ignore bold and italic formatting
         h.ignore_images = True  # Ignore images
         h.protect_links = True  # Protect hyperlinks from being stripped out
@@ -44,6 +57,84 @@ class TeleScraper:
         text = re.sub(r'\*+', '', text)  # Remove asterisks
         text = re.sub(r'^[ \t]*[\\`]', '', text, flags=re.MULTILINE)  # Remove leading \ or `
         return text    
+        
+    async def run_bulk(self):
+        """Process multiple posts in bulk mode"""
+        base_url = self.postURL.rstrip("/")
+        posts_data = []
+        success_count = 0
+        error_count = 0
+        missing_count = 0
+        
+        for i in range(self.num_posts):
+            post_id = self.start_id + i
+            url = f"{base_url}/{post_id}?embed=1&mode=tme"
+            print(f"Processing post {i+1}/{self.num_posts}: {url}")
+            
+            try:
+                linkReq = requests.get(url=url, headers=self.headers)
+                linkReq.raise_for_status()
+                linkHTML = BeautifulSoup(linkReq.text, 'html.parser')
+                
+                # Handle the case where post content might be None
+                content_element = linkHTML.find('div', {'class': 'tgme_widget_message_text js-message_text', 'dir': 'auto'})
+                content = self.html_to_text(str(content_element)) if content_element else ""
+                
+                # Get date and time with error handling
+                datetime_container = linkHTML.find('span', {'class': 'tgme_widget_message_meta'})
+                time_element = datetime_container.find('time', {'class': 'datetime'}) if datetime_container else None
+                date_time = self.html_to_text(str(time_element)) if time_element else ""
+                
+                # Check if post is missing (no content AND no date)
+                # Some posts might have empty content but still have a date
+                if not date_time:
+                    print(f"Post {post_id} appears to be missing")
+                    missing_count += 1
+                    continue
+                
+                # Add post data to our collection
+                posts_data.append({
+                    "post_id": post_id,
+                    "content": content,
+                    "dateTime": date_time
+                })
+                
+                success_count += 1
+                # Small delay to avoid rate limiting
+                time.sleep(0.5)
+                
+            except requests.exceptions.RequestException as err:
+                print(f"Error processing post {post_id}: {err}")
+                error_count += 1
+                continue
+            except AttributeError as err:
+                print(f"Error parsing post {post_id}: {err}")
+                error_count += 1
+                continue
+            except Exception as err:
+                print(f"Unexpected error processing post {post_id}: {err}")
+                error_count += 1
+                continue
+        
+        # Save the collected data to a JSON file if any posts were successfully processed
+        if posts_data:
+            url_data = base_url.split('/')
+            main_folder = url_data[-1]
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            
+            if not os.path.exists(main_folder):
+                os.makedirs(main_folder)
+                
+            file_path = os.path.join(main_folder, f"{main_folder}-bulk-{self.start_id}-{self.start_id+self.num_posts-1}-{timestamp}.json")
+            
+            with open(file_path, "w", encoding="utf-8") as file:
+                json.dump(posts_data, file, ensure_ascii=False, indent=2)
+                
+            print(f"Bulk data saved to {os.path.abspath(file_path)}")
+            print(f"Summary: Attempted {self.num_posts} posts, {success_count} successful, {error_count} failed, {missing_count} missing")
+        else:
+            print("No valid posts were found, no output file created.")
+    
     async def run(self):
         def appendImageUrls(urlList):
             for div in urlList:
@@ -186,6 +277,25 @@ class TeleScraper:
                     
         except requests.exceptions.RequestException as err:
             print(err)
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Telegram Post Scraper')
+    parser.add_argument('-l', '--link', help='URL of the Telegram post to scrape')
+    parser.add_argument('--bulk', help='Base URL for bulk processing (format: https://t.me/somegroup/)')
+    parser.add_argument('start', type=int, nargs='?', help='Starting post ID for bulk processing')
+    parser.add_argument('number', type=int, nargs='?', help='Number of posts to process in bulk mode')
+    
+    return parser.parse_args()
+
 if __name__ == '__main__':
-    _scraper = TeleScraper()
-    asyncio.run(_scraper.run())
+    args = parse_arguments()
+    
+    if args.bulk and args.start is not None and args.number is not None:
+        _scraper = TeleScraper(link=args.bulk, bulk_mode=True, start_id=args.start, num_posts=args.number)
+        asyncio.run(_scraper.run_bulk())
+    elif args.link:
+        _scraper = TeleScraper(link=args.link)
+        asyncio.run(_scraper.run())
+    else:
+        _scraper = TeleScraper()
+        asyncio.run(_scraper.run())
