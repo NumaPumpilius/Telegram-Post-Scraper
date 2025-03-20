@@ -1,67 +1,124 @@
-# Telegram Post Scraper via Python
+# Telegram Post Scraper
 
-Telegram-Post-Scraper is a Python program designed to scrape posts from Telegram channels using HTTP requests and HTML parsing, rather than Telegram's API. This program is useful when creating bots or using Telegram's API is not feasible or against Telegram's terms of service.
-TG-Post-Scraper also has the capabilities to download multimedia, videos and images from a Telegram post. Atop of this, it offers the ability to save posts and the bulk data to text files for ease of access.
-
-## Changelog
-```
-Version 3:
-Release Date: Sept 21, 2023
-
-Rewrote the base. Again.
-Added better error handling.
-Converted from async back to sync.
-Added CLI support.
-py(thon)(3) main.py --link / -l https://t.me/somegroup/420
-
-Version 4 will include a graphical user interface as well as a settings handler.
-Much love, enjoy y'all ♥
-```
-
+A Python tool for scraping content from Telegram channels without using Telegram's API. This tool allows you to download post content, media (images and videos), and save data in various formats.
 
 ## Features
 
-- Scrapes posts from Telegram channels using HTTP requests and HTML parsing.
-- Can copy the content of the posts, and download media such as images and videos.
-- Supports scraping multiple links in one session. Seperate links at the beginning of the program with commas. (t.me/groupID/333,t.me/someotherID/444,t.me/anotherOne/555)
-- Does not require a bot or an API key.
-- Useful for situations where using Telegram's API or creating a bot is not feasible or against Telegram's terms of service.
+- **Single Post Mode**: Scrape individual Telegram posts (text content, images, videos)
+- **Bulk Mode**: Download content from multiple consecutive posts at once
+- **No API Required**: Works without Telegram API keys or bot tokens
+- **Media Download**: Save images and videos from posts
+- **Multiple Output Formats**: Save as text files or JSON
+- **Error Handling**: Robust error recovery for missing posts or connection issues
+
+## Changelog
+
+```
+Version 4.0:
+Release Date: March 20, 2025
+
+- Added bulk download mode for processing multiple consecutive posts
+- Added JSON output format for bulk downloads
+- Improved error handling for missing posts and network errors
+- All saved files now go to a dedicated 'data' folder
+- Added command-line argument support with clearer syntax
+
+Version 3.0:
+Release Date: Sept 21, 2023
+
+- Rewrote the base code
+- Added better error handling
+- Converted from async back to sync
+- Added basic CLI support
+```
 
 ## Requirements
 
-To use Telegram-Post-Scraper, you need to have Python 3 installed on your system, as well as the following Python packages:
-This program was built on Python 3.10.10 64bit
+- Python 3.10+ (tested on 3.10.10)
+- Required packages:
+  - beautifulsoup4
+  - html2text
+  - pyperclip
+  - requests
 
-- beautifulsoup4==4.11.1
-- html2text==2020.1.16
-- pyperclip==1.8.2
-- Requests==2.28.2
+## Installation
 
-You can install these packages using pip by running the following command:
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/Telegram-Post-Scraper.git
+   cd Telegram-Post-Scraper
+   ```
 
-```
-pip install -r requirements.txt
-```
+2. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
 
 ## Usage
 
-To use Telegram-Post-Scraper, you just provide it with a URL of a Telegram post.
-```
-1. Open Command Prompt, Powershell, or Terminal.
-2. Run "py(thon3) main.py"
-2a. (For CLI usage) py(thon3) main.py -l OR --link http://t.me/somegroup/ID
-3. Enter your Telegram post URL. (Format: https://t.me/SOMEGROUP/NUMERICID)
-3a. You can find the link of a Telegram post by right clicking it and pressing "Copy Link".
-4. Follow through the prompts in the console window.
+### Single Post Mode
+
+To scrape a single Telegram post:
 
 ```
+python main.py --link https://t.me/channelname/123
+```
+
+Or use the short form:
+
+```
+python main.py -l https://t.me/channelname/123
+```
+
+### Bulk Mode
+
+To download multiple consecutive posts at once:
+
+```
+python main.py --bulk https://t.me/channelname/ [start_id] [number_of_posts]
+```
+
+For example, to download 10 posts starting from post ID 1000:
+
+```
+python main.py --bulk https://t.me/channelname/ 1000 10
+```
+
+This will:
+- Process all posts from ID 1000 to 1009
+- Save only the text content (no media)
+- Store the data in a JSON file in the `data/channelname` directory
+- Include the post content and date/time for each post
+
+### Interactive Mode
+
+Simply run the program without arguments to enter interactive mode:
+
+```
+python main.py
+```
+
+## Output
+
+- **Single post mode**: Offers options to copy or save post content and media
+- **Bulk mode**: Automatically saves a JSON file with all post content to `data/channelname/`
+
+## Error Handling
+
+The tool handles various error conditions:
+- Missing or deleted posts
+- Network connectivity issues
+- Rate limiting by Telegram
+- Malformed post content
 
 ## Contributing
 
-If you find any bugs or have suggestions for improvements, feel free to create an issue or submit a pull request.
+Contributions are welcome! Feel free to submit pull requests or open issues.
 
+## License
 
-## Donations
-Was this program useful to you? 
-If you want to donate ♥:
- > BTC: bc1q0r6acpfujrsc7sw42k0jxya43xmyq66emx5xlr
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+Thanks to all contributors who have helped improve this project.
